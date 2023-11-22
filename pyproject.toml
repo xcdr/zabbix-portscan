@@ -1,0 +1,20 @@
+[tool.poetry]
+name = "zabbix-portscan"
+version = "0.1.0"
+description = "Simple port scanner for ZABBIX"
+authors = ["Adam Kubica <xcdr@kaizen-step.com>"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+zappix = "^1.0.1"
+python-nmap = "^0.7.1"
+
+
+[tool.poetry.group.dev.dependencies]
+flake8 = "^6.1.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
