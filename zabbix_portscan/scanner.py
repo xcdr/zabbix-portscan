@@ -12,11 +12,10 @@ def addressess(network: str) -> list[str]:
     return [str(ip) for ip in ipaddress.ip_network(network, strict=False)]
 
 
-def scan_host(ip: str, range: str = '1-2024', arg='-Pn') -> dict[str, list]:
+def scan(ip: str, range: str = '1-65535', args='') -> dict[str, list]:
     result = {}
-
     scanner = nmap.PortScanner()
-    scanner.scan(ip, range, arguments=arg)
+    scanner.scan(ip, range, arguments=args)
 
     for host in scanner.all_hosts():
         if scanner[host].state() == 'up':
@@ -46,7 +45,7 @@ def send_metrics(zabbix_ip: str, zabbix_host: str, scan_result: dict[str, list])
 
     sender.send_value(zabbix_host, "nmap.discovery", json.dumps(discovery_data))
 
-    timestamp=str(int(time.mktime(time.localtime())))
+    timestamp = str(int(time.mktime(time.localtime())))
 
     time.sleep(10)
 
@@ -64,20 +63,18 @@ if __name__ == '__main__':
     parser.add_argument('--host', required=True, help='host the data belongs to. (this host should have the NMAP template)')
     parser.add_argument('--server', required=True, help='zabbix server', default='127.0.0.1')
     parser.add_argument('--network', required=True, help='network to scan')
-    # parser.add_argument('nmap_params', nargs='+', help='NMAP parameters (in addition to -oX -)')
+    parser.add_argument('nmap_params', nargs='*', help='additional NMAP parameters')
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO)
     try:
-        for address in addressess(args.network):
-            logging.info(f"Scanning address: {address}")
-
-            scan_result = scan_host(address)
-            if scan_result:
-                logging.info(f"Found {len(scan_result)} open ports for address: {address}")
-                send_metrics(args.server, args.host, scan_result)
-            else:
-                logging.info(f"No open ports for address: {address}")
+        logging.info(f"Start scan for: {args.network}")
+        scan_result = scan(args.network, args=' '.join(args.nmap_params))
+        if scan_result:
+            logging.info(f"Found {len(scan_result)} open ports for: {args.network}")
+            send_metrics(args.server, args.host, scan_result)
+        else:
+            logging.info(f"No open ports for: {args.network}")
     except nmap.PortScannerError as e:
         logging.exception(e)
         exit(1)
