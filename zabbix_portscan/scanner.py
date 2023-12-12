@@ -35,8 +35,7 @@ def send_metrics(zabbix_ip: str, zabbix_host: str, scan_result: dict[str, list])
             metrics.append(metric_key)
 
     logging.info(f"Sending metric for {zabbix_host}: nmap.last_scan => 0")
-    res = sender.send_value(zabbix_host, 'nmap.last_scan', 0)
-    print(res)
+    sender.send_value(zabbix_host, 'nmap.last_scan', 0)
 
     discovery_data = []
     for metric_key in metrics:
@@ -61,15 +60,19 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Zabbix NMAP open port monitor, author Adam Kubica <xcdr@kaizen-step.com>')
 
     parser.add_argument('--host', required=True, help='host the data belongs to. (this host should have the NMAP template)')
-    parser.add_argument('--server', required=True, help='zabbix server', default='127.0.0.1')
+    parser.add_argument('--server', required=True, help='zabbix server (default: 127.0.0.1)', default='127.0.0.1')
     parser.add_argument('--network', required=True, help='network to scan')
+    parser.add_argument('--ports', required=False, help='ports to scan (default: 1-1024)', default='1-1024')
+    parser.add_argument('--verbose', required=False, default=False, help='log info to stdout', action=argparse.BooleanOptionalAction)
     parser.add_argument('nmap_params', nargs='*', help='additional NMAP parameters')
     args = parser.parse_args()
 
-    logging.basicConfig(level=logging.INFO)
+    if args.verbose:
+        logging.basicConfig(level=logging.INFO)
+
     try:
         logging.info(f"Start scan for: {args.network}")
-        scan_result = scan(args.network, args=' '.join(args.nmap_params))
+        scan_result = scan(args.network, range=args.ports, args=' '.join(args.nmap_params))
         if scan_result:
             logging.info(f"Found {len(scan_result)} open ports for: {args.network}")
             send_metrics(args.server, args.host, scan_result)
