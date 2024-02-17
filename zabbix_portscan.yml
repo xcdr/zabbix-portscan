@@ -1,6 +1,6 @@
 zabbix_export:
   version: '6.0'
-  date: '2023-11-22T21:46:20Z'
+  date: '2024-02-17T14:01:33Z'
   groups:
     - uuid: 7df96b18c230490a9a0a9e2307226338
       name: Templates
@@ -10,14 +10,6 @@ zabbix_export:
       name: 'Template Port Scanner - NMAP'
       groups:
         - name: Templates
-      items:
-        - uuid: 7b24a748989941a6a0230218ce3c6378
-          name: 'Timestamp of last scan'
-          type: TRAP
-          key: nmap.last_scan
-          delay: '0'
-          history: 7d
-          trends: '0'
       discovery_rules:
         - uuid: 54a9592319cd4ed38c460d06a6a2cfb1
           name: 'NMAP port scan results'
@@ -32,9 +24,26 @@ zabbix_export:
               key: 'nmap.state[{#PORT}]'
               delay: '0'
               history: 7d
-              description: 'Timestamp when the port was last seen open. (used in combination with nmap.last_scan to see if the port is actually open)'
-          trigger_prototypes:
-            - uuid: 28cece1d0b4348b6ac6114b534b58034
-              expression: '(last(/Template Port Scanner - NMAP/nmap.state[{#PORT}])=last(/Template Port Scanner - NMAP/nmap.last_scan)) or (last(/Template Port Scanner - NMAP/nmap.last_scan)=0 and {TRIGGER.VALUE}=1)'
-              name: 'Port {#PORT} is open'
-              priority: WARNING
+              units: unixtime
+              description: 'Timestamp when the port was last seen open.'
+              tags:
+                - tag: component
+                  value: nmap
+                - tag: scope
+                  value: security
+              trigger_prototypes:
+                - uuid: 28cece1d0b4348b6ac6114b534b58034
+                  expression: 'last(/Template Port Scanner - NMAP/nmap.state[{#PORT}])>0 and nodata(/Template Port Scanner - NMAP/nmap.state[{#PORT}],{$NODATA_MAX})=0'
+                  name: 'Port {#PORT} opened at last scan'
+                  opdata: 'Checked: {ITEM.LASTVALUE}'
+                  priority: WARNING
+                  description: 'Trigger alert when timestamp of last check is greater than 0 and data was collected alt lest {$NODATA_MAX} ago.'
+                  manual_close: 'YES'
+                  tags:
+                    - tag: component
+                      value: nmap
+                    - tag: scope
+                      value: security
+      macros:
+        - macro: '{$NODATA_MAX}'
+          value: 1d

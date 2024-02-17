@@ -3,14 +3,8 @@ import json
 import time
 import argparse
 import logging
-import ipaddress
 
-from zappix.sender import Sender
-
-
-# Split network to list of hosts
-def addressess(network: str) -> list[str]:
-    return [str(ip) for ip in ipaddress.ip_network(network, strict=False)]
+from zabbix_utils import Sender
 
 
 # Scan network for specified port range
@@ -37,9 +31,6 @@ def send_metrics(zabbix_ip: str, zabbix_host: str, scan_result: dict[str, list])
             metric_key = f"'{ip} {port}/{proto}'"
             metrics.append(metric_key)
 
-    logging.info(f"Sending metric for {zabbix_host}: nmap.last_scan => 0")
-    sender.send_value(zabbix_host, 'nmap.last_scan', 0)
-
     discovery_data = []
     for metric_key in metrics:
         discovery_item = {"{#PORT}": metric_key}
@@ -47,16 +38,13 @@ def send_metrics(zabbix_ip: str, zabbix_host: str, scan_result: dict[str, list])
 
     sender.send_value(zabbix_host, "nmap.discovery", json.dumps(discovery_data))
 
-    timestamp = str(int(time.mktime(time.localtime())))
-
     time.sleep(10)
+
+    timestamp = str(int(time.mktime(time.localtime())))
 
     for metric_key in metrics:
         logging.info(f"Sending metric for {zabbix_host}: nmap.state[{metric_key}] => {timestamp}")
         sender.send_value(zabbix_host, f"nmap.state[{metric_key}]", timestamp)
-
-    logging.info(f"Sending metric for {zabbix_host}: nmap.last_scan => {timestamp}")
-    sender.send_value(zabbix_host, 'nmap.last_scan', timestamp)
 
 
 if __name__ == '__main__':
@@ -90,7 +78,7 @@ if __name__ == '__main__':
     except nmap.PortScannerError as e:
         logging.error(e)
         exit(1)
-    except ConnectionRefusedError as e:
+    except (ConnectionRefusedError, OSError) as e:
         logging.error(e)
         exit(1)
     except KeyboardInterrupt:
